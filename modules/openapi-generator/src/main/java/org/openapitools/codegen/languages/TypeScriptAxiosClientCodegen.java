@@ -17,6 +17,7 @@
 
 package org.openapitools.codegen.languages;
 
+import io.swagger.v3.oas.models.Components;
 import io.swagger.v3.oas.models.media.ComposedSchema;
 import io.swagger.v3.oas.models.media.Schema;
 import io.swagger.v3.parser.util.SchemaTypeUtil;
@@ -152,6 +153,34 @@ public class TypeScriptAxiosClientCodegen extends AbstractTypeScriptClientCodege
             addNpmPackageGeneration();
         }
 
+    }
+
+    @Override
+    public String getTypeDeclaration(Schema p) {
+        if (ModelUtils.isMapSchema(p)) {
+            Schema<?> inner = getSchemaAdditionalProperties(p);
+            String nullSafeSuffix = getNullSafeAdditionalProps() ? " | undefined" : "";
+
+            String nullTypeSuffix = "";
+            boolean isNullable = false;
+
+            if (inner.get$ref() != null) {
+                Map<String, Schema> schemas = ModelUtils.getSchemas(openAPI);
+                String ref = StringUtils.removeStart(inner.get$ref(), Components.COMPONENTS_SCHEMAS_REF);
+                Schema<?> unaliased = schemas.get(ref);
+                isNullable = unaliased != null && Boolean.TRUE.equals(unaliased.getNullable());
+            } else {
+                isNullable = Boolean.TRUE.equals(inner.getNullable());
+            }
+
+            if (isNullable) {
+                nullTypeSuffix = " | null";
+            }
+
+            return "{ [key: string]: " + getTypeDeclaration(unaliasSchema(inner)) + nullSafeSuffix + nullTypeSuffix + "; }";
+        }
+
+        return super.getTypeDeclaration(p);
     }
 
     @Override
